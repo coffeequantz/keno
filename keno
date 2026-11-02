@@ -1,0 +1,5 @@
+#!/bin/zsh
+# Command-line launcher, like VS Code's `code`:  keno .   keno file.txt
+# Install: ln -s "$PWD/keno" /usr/local/bin/keno
+if [[ $# -eq 0 ]]; then exec open -a Keno; fi
+exec open -a Keno "${@:A}"
