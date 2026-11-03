@@ -34,9 +34,16 @@
 - Multiple terminal tabs running your login shell, powered by [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm)
 - Panel can sit below or beside the editor
 - Option stays Option, so international keyboard layouts can type `@ { } [ ] | \ ~`
-- **Voice prompts**: press ⌥⌘R (or the mic button), speak, press again. Your words are transcribed locally with [whisper.cpp](https://github.com/ggml-org/whisper.cpp) and pasted into the terminal, ready to review before you hit Enter. Handy for dictating prompts to AI coding tools. Free and offline; nothing is loaded until you record, and audio is deleted right after transcription.
+
+**Dictation**
+- Press ⌥⌘R (or **Dictate** in the status bar), speak, press again. Text goes wherever your cursor is:
+  - **Editor**: it appears as you talk, so you can dictate long notes, drafts or instructions (up to an hour). A long pause after a sentence starts a new paragraph.
+  - **Terminal**: one paste when you stop, ready to review before you hit Enter. Handy for prompts to AI coding tools.
+- Transcribed on your Mac by the built-in [whisper.cpp](https://github.com/ggml-org/whisper.cpp): nothing to install, free and offline. Audio stays in memory and is never written to disk, and nothing is loaded until you start.
+- Speech is transcribed in pieces while you talk, so even long dictations are done a few seconds after you stop.
 
 **General**
+- Status bar: line and column, word count of the file or selection (click to switch to characters or reading time), language; image size for images
 - Remembers open tabs per folder, recent folders and layout
 - Follows light/dark mode; one shared zoom level for the editor and terminal
 - Multiple windows
@@ -59,16 +66,16 @@
 | Indent / outdent | ⌘] / ⌘[ (or Tab / ⇧Tab on a selection) |
 | Format document | ⇧⌥F |
 | Toggle word wrap | ⌥Z |
-| Voice prompt (start / stop) | ⌥⌘R |
+| Dictation (start / stop) | ⌥⌘R |
 | Zoom in / out / reset | ⌘= / ⌘- / ⌘0 |
 
 ## Build
 
-Requires macOS 13+ and Xcode (or the Swift toolchain).
+Requires macOS 13.3+ and Xcode (or the Swift toolchain).
 
 ```sh
-./build.sh                          # builds build/Keno.app (release)
-cp -R build/Keno.app /Applications/
+./build.sh               # builds Keno.app (release) and installs it to /Applications
+./build.sh --no-install  # only builds build.noindex/Keno.app
 ```
 
 Optional command-line launcher, like `code .`:
@@ -80,13 +87,19 @@ keno .
 
 The app icon is drawn in code; regenerate it with `swift Resources/make-icon.swift`.
 
-### Voice prompts (optional)
+### Dictation
 
-```sh
-brew install whisper.cpp
-```
+Nothing to install: whisper.cpp is linked into Keno (Metal on Apple Silicon, AVX2 on Intel). The first time you dictate, Keno offers to download a speech model into `~/Library/Application Support/Keno/models`. Every model understands all major languages; they differ in size, speed and accuracy:
 
-On first use Keno offers to download a Whisper model (Base, 142 MB, or Small, 466 MB) into `~/Library/Application Support/Keno/models`. Any other ggml Whisper model you put there is picked up too; larger ones are more accurate but slower. Set the language under **Terminal ▸ Voice Language** (default: detect automatically).
+| Model | Download | |
+|---|---|---|
+| Base | 148 MB | fastest |
+| Small | 488 MB | balanced, recommended on Intel Macs |
+| Large v3 Turbo | 574 MB | most accurate, recommended on Apple Silicon |
+
+Switch or download models under **Edit ▸ Dictation Model**; any other ggml Whisper model you drop into the models folder shows up there too. Set the language under **Edit ▸ Dictation Language** (default: detect automatically; the language found first is kept for the rest of a dictation).
+
+The whisper.cpp library is downloaded automatically when you build (a prebuilt, checksum-verified [release asset](https://github.com/coffeequantz/keno/releases/tag/whisper-v1.9.5)). To build it yourself from source, run `scripts/build-whisper.sh` (needs cmake). Third-party licenses are in `Resources/ThirdPartyLicenses.txt`.
 
 ## Design notes
 

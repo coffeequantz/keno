@@ -60,6 +60,21 @@ enum MainMenu {
         edit.addItem(item("Toggle Line Comment", #selector(EditorTextView.toggleComment(_:)), "/"))
         edit.addItem(item("Indent Lines", #selector(EditorTextView.indentLines(_:)), "]"))
         edit.addItem(item("Outdent Lines", #selector(EditorTextView.outdentLines(_:)), "["))
+        edit.addItem(.separator())
+        // Keno's own (local Whisper) dictation; the system's "Start Dictation…" item is turned off in main.swift.
+        edit.addItem(item("Start Dictation", #selector(W.toggleDictation(_:)), "r", [.command, .option]))
+        edit.addItem(item("Cancel Dictation", #selector(W.cancelDictation(_:)), ""))
+        let langs = NSMenu(title: "Dictation Language")
+        for (title, code) in [("Detect Automatically", "auto"), ("English", "en"), ("German", "de"),
+                              ("French", "fr"), ("Spanish", "es"), ("Italian", "it")] {
+            let i = item(title, #selector(W.setDictationLanguage(_:)), "")
+            i.representedObject = code
+            langs.addItem(i)
+        }
+        edit.addItem(withTitle: "Dictation Language", action: nil, keyEquivalent: "").submenu = langs
+        let models = NSMenu(title: "Dictation Model")
+        models.delegate = DictationModelMenu.shared // rebuilt on open: shows what’s downloaded
+        edit.addItem(withTitle: "Dictation Model", action: nil, keyEquivalent: "").submenu = models
 
         // View
         let view = submenu(main, "View")
@@ -67,6 +82,7 @@ enum MainMenu {
         view.addItem(item("Toggle Terminal", #selector(W.toggleTerminal(_:)), "`", [.control]))
         view.addItem(hidden(item("Toggle Terminal", #selector(W.toggleTerminal(_:)), "j"))) // VS Code's ⌘J
         view.addItem(item("Move Terminal to Right", #selector(W.toggleTerminalPosition(_:)), ""))
+        view.addItem(item("Hide Status Bar", #selector(W.toggleStatusBar(_:)), ""))
         view.addItem(item("Toggle Word Wrap", #selector(W.toggleWordWrap(_:)), "z", [.option]))
         view.addItem(.separator())
         view.addItem(item("Focus Editor", #selector(W.focusEditor(_:)), "1"))
@@ -83,17 +99,6 @@ enum MainMenu {
         let term = submenu(main, "Terminal")
         term.addItem(item("New Terminal", #selector(W.newTerminal(_:)), "`", [.control, .shift]))
         term.addItem(item("Kill Terminal", #selector(W.killTerminal(_:)), ""))
-        term.addItem(.separator())
-        term.addItem(item("Start Voice Prompt", #selector(W.toggleVoicePrompt(_:)), "r", [.command, .option]))
-        term.addItem(item("Cancel Voice Prompt", #selector(W.cancelVoicePrompt(_:)), ""))
-        let langs = NSMenu(title: "Voice Language")
-        for (title, code) in [("Detect Automatically", "auto"), ("English", "en"), ("German", "de"),
-                              ("French", "fr"), ("Spanish", "es"), ("Italian", "it")] {
-            let i = item(title, #selector(W.setVoiceLanguage(_:)), "")
-            i.representedObject = code
-            langs.addItem(i)
-        }
-        term.addItem(withTitle: "Voice Language", action: nil, keyEquivalent: "").submenu = langs
 
         // Window
         let window = submenu(main, "Window")
@@ -135,5 +140,42 @@ enum MainMenu {
         let i = item(title, #selector(NSResponder.performTextFinderAction(_:)), key, mods)
         i.tag = action.rawValue
         return i
+    }
+}
+
+/// Edit ▸ Dictation Model: the catalog (with download sizes for missing ones), any extra
+/// models found in the models folder, and a shortcut to that folder.
+final class DictationModelMenu: NSObject, NSMenuDelegate {
+    static let shared = DictationModelMenu()
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let action = #selector(MainWindowController.setDictationModel(_:))
+        let recommended = Dictation.recommendedModel.file
+        for m in Dictation.catalog {
+            var title = "\(m.name) · \(m.note)"
+            if m.file == recommended { title += ", recommended" }
+            if !Dictation.isInstalled(m.file) { title += " · Download \(m.size)" }
+            let i = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            i.representedObject = m.file
+            menu.addItem(i)
+        }
+        let extras = Dictation.installedModels().filter { f in !Dictation.catalog.contains { $0.file == f } }
+        if !extras.isEmpty { menu.addItem(.separator()) }
+        for f in extras {
+            let i = NSMenuItem(title: f, action: action, keyEquivalent: "")
+            i.representedObject = f
+            menu.addItem(i)
+        }
+        menu.addItem(.separator())
+        let folder = NSMenuItem(title: "Show Models Folder", action: #selector(showFolder), keyEquivalent: "")
+        folder.target = self
+        menu.addItem(folder)
+    }
+
+    @objc private func showFolder() {
+        let dir = Dictation.modelsDirectory
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        NSWorkspace.shared.open(dir)
     }
 }

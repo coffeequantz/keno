@@ -15,6 +15,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Keno"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 [[ -f Resources/AppIcon.icns ]] && cp Resources/AppIcon.icns "$APP/Contents/Resources/" || true
+cp Resources/ThirdPartyLicenses.txt "$APP/Contents/Resources/"
 strip -x "$APP/Contents/MacOS/Keno"
 codesign --force --sign - "$APP" >/dev/null
 echo "Built $APP ($(du -sh "$APP" | cut -f1))"

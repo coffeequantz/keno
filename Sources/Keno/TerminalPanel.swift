@@ -30,13 +30,6 @@ final class TerminalPanel: NSView, LocalProcessTerminalViewDelegate {
         super.init(frame: frameRect)
         tabBar.translatesAutoresizingMaskIntoConstraints = false
         content.translatesAutoresizingMaskIntoConstraints = false
-        voiceBar.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(voiceBar)
-        voiceBar.onToggle = { [weak self] in self?.onVoice?() }
-        voiceBar.ownsVoice = { [weak self] in
-            let target = VoicePrompt.shared.target
-            return target == nil || target === self
-        }
         addSubview(tabBar)
         addSubview(content)
         NSLayoutConstraint.activate([
@@ -46,10 +39,7 @@ final class TerminalPanel: NSView, LocalProcessTerminalViewDelegate {
             content.topAnchor.constraint(equalTo: tabBar.bottomAnchor),
             content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             content.trailingAnchor.constraint(equalTo: trailingAnchor),
-            content.bottomAnchor.constraint(equalTo: voiceBar.topAnchor, constant: -4),
-            voiceBar.leadingAnchor.constraint(equalTo: leadingAnchor),
-            voiceBar.trailingAnchor.constraint(equalTo: trailingAnchor),
-            voiceBar.bottomAnchor.constraint(equalTo: bottomAnchor),
+            content.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
         ])
         tabBar.addAccessory(symbol: "plus", toolTip: "New Terminal (⌃⇧`)", target: self, action: #selector(newTerminalClicked))
         positionButton = tabBar.addAccessory(symbol: "rectangle.split.2x1", toolTip: "Move Terminal to Right",
@@ -72,17 +62,6 @@ final class TerminalPanel: NSView, LocalProcessTerminalViewDelegate {
     @objc private func newTerminalClicked() { newTerminal(in: nil) }
     @objc private func hideClicked() { onHide?() }
 
-    // MARK: Voice prompt
-
-    var onVoice: (() -> Void)?
-    private let voiceBar = VoiceBar()
-
-    /// Pastes dictated text into the active terminal (bracketed paste, no Enter) and focuses it.
-    func insertDictation(_ text: String) {
-        guard let s = current else { NSSound.beep(); return }
-        s.view.pasteText(text)
-        focus()
-    }
     @objc private func positionClicked() { onTogglePosition?() }
     var onHide: (() -> Void)?
     var onTogglePosition: (() -> Void)?
@@ -224,5 +203,20 @@ final class TerminalPanel: NSView, LocalProcessTerminalViewDelegate {
             guard let self, let i = self.sessions.firstIndex(where: { $0.view === source }) else { return }
             self.closeSession(at: i)
         }
+    }
+}
+
+// MARK: - Dictation
+
+extension TerminalPanel: DictationTarget {
+    var dictationLabel: String { "Terminal" }
+    var dictationStreamsText: Bool { false } // one paste at the end, reviewed before you press Enter
+    func dictationPrompt() -> String? { Dictation.vocabularyHint }
+
+    /// Pastes dictated text into the active terminal (bracketed paste, no Enter) and focuses it.
+    func insertDictation(_ text: String, newParagraph: Bool) {
+        guard let s = current else { NSSound.beep(); return }
+        s.view.pasteText(text)
+        focus()
     }
 }

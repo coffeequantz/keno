@@ -4,8 +4,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
     let explorer = FileExplorer()
     let editor = EditorArea()
     let terminal = TerminalPanel()
+    let statusBar = StatusBar()
 
     private let outerSplit = ThemedSplitView()
+    private var content: WindowContentView!
     private let innerSplit = ThemedSplitView()
 
     var onClose: ((MainWindowController) -> Void)?
@@ -54,7 +56,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
         outerSplit.addSubview(innerSplit)
         innerSplit.addSubview(editor)
 
-        window.contentView = outerSplit
+        content = WindowContentView(main: outerSplit, statusBar: statusBar)
+        content.statusBarVisible = !defaults.bool(forKey: "statusBarHidden")
+        window.contentView = content
         if !window.setFrameUsingName("KenoMainWindow") { window.center() }
         window.setFrameAutosaveName("KenoMainWindow")
 
@@ -74,12 +78,18 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
             self?.showTerminal(createIfNeeded: false)
             self?.terminal.newTerminal(in: dir)
         }
-        editor.onChange = { [weak self] in self?.updateTitle() }
+        editor.onChange = { [weak self] in
+            self?.updateTitle()
+            self?.statusBar.documentChanged()
+        }
+        statusBar.document = { [weak self] in self?.editor.current }
+        statusBar.onDictate = { [weak self] in self?.toggleDictation(nil) }
+        NotificationCenter.default.addObserver(self, selector: #selector(dictationChanged),
+                                               name: Dictation.didChange, object: nil)
         terminal.defaultDirectory = { [weak self] in self?.folderURL }
         terminal.onEmpty = { [weak self] in self?.hideTerminal() }
         terminal.onHide = { [weak self] in self?.hideTerminal() }
         terminal.onTogglePosition = { [weak self] in self?.toggleTerminalPosition(nil) }
-        terminal.onVoice = { [weak self] in self?.toggleVoicePrompt(nil) }
         terminal.setPosition(onRight: terminalOnRight)
         updateTitle()
     }
@@ -236,16 +246,49 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
 
     @objc func killTerminal(_ sender: Any?) { terminal.closeCurrent() }
 
-    /// Start/stop dictating a prompt into the active terminal (opening one if needed).
-    @objc func toggleVoicePrompt(_ sender: Any?) {
-        if case .idle = VoicePrompt.shared.state { showTerminal() }
-        VoicePrompt.shared.toggle(for: terminal)
+    // MARK: Dictation
+
+    /// Starts dictating wherever you're typing (terminal, or the editor's current file, or a new
+    /// file if none is open); stops a running dictation.
+    @objc func toggleDictation(_ sender: Any?) {
+        let d = Dictation.shared
+        if d.isRecording { d.toggle(target: terminal, window: window); return } // stops; target unused
+        guard !d.isBusy else { NSSound.beep(); return }
+        if d.offerModelIfMissing(window: window) { return }
+        let target: DictationTarget
+        if terminalShown, terminal.containsFirstResponder {
+            target = terminal
+        } else {
+            if editor.current?.isImage ?? true { editor.newUntitled() }
+            guard let doc = editor.current else { return }
+            editor.focus()
+            target = doc
+        }
+        d.toggle(target: target, window: window)
     }
 
-    @objc func cancelVoicePrompt(_ sender: Any?) { VoicePrompt.shared.cancel() }
+    @objc func cancelDictation(_ sender: Any?) { Dictation.shared.cancel() }
 
-    @objc func setVoiceLanguage(_ sender: NSMenuItem) {
-        if let code = sender.representedObject as? String { VoicePrompt.shared.language = code }
+    @objc func setDictationLanguage(_ sender: NSMenuItem) {
+        if let code = sender.representedObject as? String { Dictation.shared.language = code }
+    }
+
+    /// Chooses (downloading if needed) a Whisper model; progress shows in this window's status bar.
+    @objc func setDictationModel(_ sender: NSMenuItem) {
+        guard let file = sender.representedObject as? String else { return }
+        Dictation.shared.chooseModel(file, window: window)
+    }
+
+    @objc func toggleStatusBar(_ sender: Any?) {
+        defaults.set(!defaults.bool(forKey: "statusBarHidden"), forKey: "statusBarHidden")
+        dictationChanged()
+    }
+
+    /// A hidden status bar still appears while this window is dictating or downloading a model.
+    @objc private func dictationChanged() {
+        let d = Dictation.shared
+        let active = (d.isBusy || d.message != nil) && d.window === window
+        content.statusBarVisible = !defaults.bool(forKey: "statusBarHidden") || active
     }
 
     @objc func formatDocument(_ sender: Any?) {
@@ -312,16 +355,22 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
             item.title = explorerShown ? "Hide Explorer" : "Show Explorer"
         case #selector(saveFile(_:)), #selector(saveFileAs(_:)), #selector(formatDocument(_:)):
             return editor.current.map { !$0.isImage } ?? false
-        case #selector(toggleVoicePrompt(_:)):
-            switch VoicePrompt.shared.state {
-            case .recording: item.title = "Stop & Transcribe"
-            case .idle: item.title = "Start Voice Prompt"
-            default: item.title = "Start Voice Prompt"; return false
+        case #selector(toggleDictation(_:)):
+            switch Dictation.shared.state {
+            case .recording: item.title = "Stop Dictation"
+            case .idle: item.title = "Start Dictation"
+            default: item.title = "Start Dictation"; return false
             }
-        case #selector(cancelVoicePrompt(_:)):
-            return VoicePrompt.shared.isBusy
-        case #selector(setVoiceLanguage(_:)):
-            item.state = (item.representedObject as? String) == VoicePrompt.shared.language ? .on : .off
+        case #selector(cancelDictation(_:)):
+            return Dictation.shared.isBusy
+        case #selector(setDictationLanguage(_:)):
+            item.state = (item.representedObject as? String) == Dictation.shared.language ? .on : .off
+        case #selector(setDictationModel(_:)):
+            let file = item.representedObject as? String
+            item.state = file != nil && file == Dictation.activeModelName() ? .on : .off
+            return !Dictation.shared.isBusy
+        case #selector(toggleStatusBar(_:)):
+            item.title = defaults.bool(forKey: "statusBarHidden") ? "Show Status Bar" : "Hide Status Bar"
         case #selector(killTerminal(_:)):
             return !terminal.sessions.isEmpty
         default: break
@@ -359,6 +408,37 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
         guard let split = notification.object as? NSSplitView, window?.inLiveResize == false else { return }
         if split === outerSplit, explorerShown, explorer.frame.width > 0 { sidebarWidth = explorer.frame.width }
         if split === innerSplit, terminalShown, terminalExtent > 0 { terminalSize = terminalExtent }
+    }
+}
+
+/// The window's content: the split views on top, the status bar along the bottom.
+final class WindowContentView: NSView {
+    private let main: NSView
+    private let statusBar: StatusBar
+
+    var statusBarVisible = true {
+        didSet {
+            guard statusBarVisible != oldValue else { return }
+            statusBar.isHidden = !statusBarVisible
+            needsLayout = true
+        }
+    }
+
+    init(main: NSView, statusBar: StatusBar) {
+        self.main = main
+        self.statusBar = statusBar
+        super.init(frame: .zero)
+        addSubview(main)
+        addSubview(statusBar)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func layout() {
+        super.layout()
+        let h = statusBarVisible ? StatusBar.height : 0
+        statusBar.frame = NSRect(x: 0, y: 0, width: bounds.width, height: StatusBar.height)
+        main.frame = NSRect(x: 0, y: h, width: bounds.width, height: bounds.height - h)
     }
 }
 

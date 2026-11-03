@@ -3,16 +3,23 @@ import PackageDescription
 
 let package = Package(
     name: "Keno",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS("13.3")],
     dependencies: [
         .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.2.0"),
     ],
     targets: [
         .executableTarget(
             name: "Keno",
-            dependencies: [.product(name: "SwiftTerm", package: "SwiftTerm")],
+            dependencies: [.product(name: "SwiftTerm", package: "SwiftTerm"), "whisper"],
             path: "Sources/Keno",
             swiftSettings: [.unsafeFlags(["-Ounchecked"], .when(configuration: .release))]
+        ),
+        // whisper.cpp (MIT) for local voice prompts, linked statically: nothing for users to install.
+        // Built by scripts/build-whisper.sh: universal, Metal on Apple Silicon, AVX2 on Intel.
+        .binaryTarget(
+            name: "whisper",
+            url: "https://github.com/coffeequantz/keno/releases/download/whisper-v1.9.5/whisper-v1.9.5-macos.xcframework.zip",
+            checksum: "0a5d563ded211cbb2479f737e0d892d679a3ae063a092d12cfc9001d8477a209"
         ),
     ]
 )

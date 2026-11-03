@@ -292,6 +292,7 @@ final class Document: NSObject, NSTextViewDelegate, NSTextStorageDelegate {
         lines.rebuild(textStorage.string as NSString)
         highlighter?.textEdited(editedRange, lineCountBefore: before)
         ruler.linesChanged()
+        NotificationCenter.default.post(name: Self.textDidChange, object: self)
     }
 
     func textDidChange(_ notification: Notification) {
@@ -305,6 +306,62 @@ final class Document: NSObject, NSTextViewDelegate, NSTextStorageDelegate {
 
     func textViewDidChangeSelection(_ notification: Notification) {
         ruler.needsDisplay = true
+        NotificationCenter.default.post(name: Self.selectionDidChange, object: self)
+    }
+
+    /// Posted (object: the document) for every text change, including reloads; drives the status bar.
+    static let textDidChange = Notification.Name("KenoDocumentTextDidChange")
+    static let selectionDidChange = Notification.Name("KenoDocumentSelectionDidChange")
+}
+
+// MARK: - Dictation
+
+extension Document: DictationTarget {
+    var dictationLabel: String { displayName }
+    var dictationStreamsText: Bool { true }
+
+    /// The text just before the cursor, so Whisper continues in the same style and spelling.
+    func dictationPrompt() -> String? {
+        let ns = textView.string as NSString
+        let loc = textView.selectedRange().location
+        let start = max(0, loc - 220)
+        let tail = ns.substring(with: NSRange(location: start, length: loc - start))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return tail.isEmpty ? nil : tail
+    }
+
+    /// Inserts at the cursor (replacing a selection) with sensible spacing, as its own undo step.
+    func insertDictation(_ text: String, newParagraph: Bool) {
+        let tv = textView
+        let ns = tv.string as NSString
+        let sel = tv.selectedRange()
+        func isBreak(_ c: unichar) -> Bool { c == 0x0A || c == 0x0D }
+
+        var prefix = ""
+        if sel.location > 0 {
+            let prev = ns.character(at: sel.location - 1)
+            if newParagraph {
+                let blankLineAlready = isBreak(prev) && sel.location > 1 && isBreak(ns.character(at: sel.location - 2))
+                prefix = blankLineAlready ? "" : isBreak(prev) ? tv.lineEnding : tv.lineEnding + tv.lineEnding
+            } else if !isBreak(prev), prev != 0x20, prev != 0x09 {
+                prefix = " "
+            }
+        }
+        // Dictating in front of a word: keep a space between the new text and it.
+        var suffix = ""
+        let after = NSMaxRange(sel)
+        if after < ns.length, let u = UnicodeScalar(ns.character(at: after)), CharacterSet.alphanumerics.contains(u) {
+            suffix = " "
+        }
+
+        tv.breakUndoCoalescing()
+        tv.insertText(prefix + text + suffix, replacementRange: sel)
+        if !suffix.isEmpty { // cursor before the space, so the next piece continues the sentence
+            let end = tv.selectedRange().location - 1
+            tv.setSelectedRange(NSRange(location: end, length: 0))
+        }
+        tv.breakUndoCoalescing()
+        tv.scrollRangeToVisible(tv.selectedRange())
     }
 }
 

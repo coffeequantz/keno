@@ -54,6 +54,9 @@ final class ImagePreviewView: NSView {
         needsDisplay = true
     }
 
+    /// Dimensions, type and size ("4032 × 3024  ·  HEIC  ·  2.1 MB"), shown in the status bar.
+    var infoText: String { infoLabel.stringValue }
+
     // MARK: Metadata
 
     private func loadMetadata() {
