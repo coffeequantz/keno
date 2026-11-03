@@ -9,6 +9,13 @@
   Nothing else. Around 12&nbsp;MB of RAM.
 </p>
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
+    <img src="docs/screenshot-light.png" width="880" alt="Keno: file explorer on the left, a Swift file open in a tab, a terminal below and the status bar along the bottom">
+  </picture>
+</p>
+
 ---
 
 *Keno* comes from the Greek **κενό**: "void, empty space". It keeps the editor layout you use every day (a folder tree on the left, tabs in the middle, terminals at the bottom or side) and drops everything else. It's pure Swift and AppKit: no Electron, no web views, no background services.
