@@ -34,6 +34,7 @@
 - Multiple terminal tabs running your login shell, powered by [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm)
 - Panel can sit below or beside the editor
 - Option stays Option, so international keyboard layouts can type `@ { } [ ] | \ ~`
+- **Voice prompts**: press ⌥⌘R (or the mic button), speak, press again. Your words are transcribed locally with [whisper.cpp](https://github.com/ggml-org/whisper.cpp) and pasted into the terminal, ready to review before you hit Enter. Handy for dictating prompts to AI coding tools. Free and offline; nothing is loaded until you record, and audio is deleted right after transcription.
 
 **General**
 - Remembers open tabs per folder, recent folders and layout
@@ -58,6 +59,7 @@
 | Indent / outdent | ⌘] / ⌘[ (or Tab / ⇧Tab on a selection) |
 | Format document | ⇧⌥F |
 | Toggle word wrap | ⌥Z |
+| Voice prompt (start / stop) | ⌥⌘R |
 | Zoom in / out / reset | ⌘= / ⌘- / ⌘0 |
 
 ## Build
@@ -77,6 +79,14 @@ keno .
 ```
 
 The app icon is drawn in code; regenerate it with `swift Resources/make-icon.swift`.
+
+### Voice prompts (optional)
+
+```sh
+brew install whisper.cpp
+```
+
+On first use Keno offers to download a Whisper model (Base, 142 MB, or Small, 466 MB) into `~/Library/Application Support/Keno/models`. Any other ggml Whisper model you put there is picked up too; larger ones are more accurate but slower. Set the language under **Terminal ▸ Voice Language** (default: detect automatically).
 
 ## Design notes
 

@@ -16,6 +16,7 @@
     <key>NSHighResolutionCapable</key><true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
     <key>NSQuitAlwaysKeepsWindows</key><false/>
+    <key>NSMicrophoneUsageDescription</key><string>Keno listens only while you dictate a terminal prompt. Audio is transcribed on this Mac and deleted right away.</string>
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>

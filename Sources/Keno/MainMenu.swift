@@ -83,6 +83,17 @@ enum MainMenu {
         let term = submenu(main, "Terminal")
         term.addItem(item("New Terminal", #selector(W.newTerminal(_:)), "`", [.control, .shift]))
         term.addItem(item("Kill Terminal", #selector(W.killTerminal(_:)), ""))
+        term.addItem(.separator())
+        term.addItem(item("Start Voice Prompt", #selector(W.toggleVoicePrompt(_:)), "r", [.command, .option]))
+        term.addItem(item("Cancel Voice Prompt", #selector(W.cancelVoicePrompt(_:)), ""))
+        let langs = NSMenu(title: "Voice Language")
+        for (title, code) in [("Detect Automatically", "auto"), ("English", "en"), ("German", "de"),
+                              ("French", "fr"), ("Spanish", "es"), ("Italian", "it")] {
+            let i = item(title, #selector(W.setVoiceLanguage(_:)), "")
+            i.representedObject = code
+            langs.addItem(i)
+        }
+        term.addItem(withTitle: "Voice Language", action: nil, keyEquivalent: "").submenu = langs
 
         // Window
         let window = submenu(main, "Window")

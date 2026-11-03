@@ -71,6 +71,11 @@ final class TabBarView: NSView {
     }
 
     /// Adds a small icon button at the right end of the bar (e.g. "+" for new terminal).
+    /// Adds an arbitrary view (e.g. a status label) to the accessory area, left of the buttons.
+    func addAccessoryView(_ view: NSView) {
+        accessoryStack.addArrangedSubview(view)
+    }
+
     @discardableResult
     func addAccessory(symbol: String, toolTip: String, target: AnyObject, action: Selector) -> NSButton {
         let image = NSImage(systemSymbolName: symbol, accessibilityDescription: toolTip)

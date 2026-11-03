@@ -79,6 +79,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
         terminal.onEmpty = { [weak self] in self?.hideTerminal() }
         terminal.onHide = { [weak self] in self?.hideTerminal() }
         terminal.onTogglePosition = { [weak self] in self?.toggleTerminalPosition(nil) }
+        terminal.onVoice = { [weak self] in self?.toggleVoicePrompt(nil) }
         terminal.setPosition(onRight: terminalOnRight)
         updateTitle()
     }
@@ -235,6 +236,18 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
 
     @objc func killTerminal(_ sender: Any?) { terminal.closeCurrent() }
 
+    /// Start/stop dictating a prompt into the active terminal (opening one if needed).
+    @objc func toggleVoicePrompt(_ sender: Any?) {
+        if case .idle = VoicePrompt.shared.state { showTerminal() }
+        VoicePrompt.shared.toggle(for: terminal)
+    }
+
+    @objc func cancelVoicePrompt(_ sender: Any?) { VoicePrompt.shared.cancel() }
+
+    @objc func setVoiceLanguage(_ sender: NSMenuItem) {
+        if let code = sender.representedObject as? String { VoicePrompt.shared.language = code }
+    }
+
     @objc func formatDocument(_ sender: Any?) {
         guard let doc = editor.current, !doc.isImage else { return }
         guard let url = doc.url else {
@@ -299,6 +312,16 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
             item.title = explorerShown ? "Hide Explorer" : "Show Explorer"
         case #selector(saveFile(_:)), #selector(saveFileAs(_:)), #selector(formatDocument(_:)):
             return editor.current.map { !$0.isImage } ?? false
+        case #selector(toggleVoicePrompt(_:)):
+            switch VoicePrompt.shared.state {
+            case .recording: item.title = "Stop & Transcribe"
+            case .idle: item.title = "Start Voice Prompt"
+            default: item.title = "Start Voice Prompt"; return false
+            }
+        case #selector(cancelVoicePrompt(_:)):
+            return VoicePrompt.shared.isBusy
+        case #selector(setVoiceLanguage(_:)):
+            item.state = (item.representedObject as? String) == VoicePrompt.shared.language ? .on : .off
         case #selector(killTerminal(_:)):
             return !terminal.sessions.isEmpty
         default: break

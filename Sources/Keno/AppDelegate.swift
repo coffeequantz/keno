@@ -47,6 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controllers.filter { $0 !== key }.forEach { $0.saveSession() }
         key?.saveSession()
         controllers.forEach { $0.terminal.terminateAll() }
+        VoicePrompt.shared.cancel()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
