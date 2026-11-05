@@ -113,5 +113,5 @@ The whisper.cpp library is downloaded automatically when you build (a prebuilt, 
 - **TextKit 1** (`NSTextView` + `NSLayoutManager`) with non-contiguous layout, for predictable performance on large files.
 - Syntax colors are layout-manager *temporary attributes*: they never touch the text storage or the undo stack.
 - Each tab owns its own text view, so undo history, selection and scroll position are kept per tab.
-- The terminal uses SwiftTerm's CoreGraphics renderer, not Metal, to stay light on older GPUs.
+- The terminal draws with SwiftTerm's Metal renderer, on a separate thread for each visible terminal, so busy terminals don't slow the app. It falls back to CoreGraphics if Metal can't start.
 - Hidden panels are detached from the view hierarchy; their shells keep running.

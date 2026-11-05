@@ -12,6 +12,30 @@ final class TerminalSession {
     }
 }
 
+/// Draws with Metal, so busy terminals render on their own thread and leave the main thread free.
+/// SwiftTerm needs a window before it can switch; if Metal can't start, the view stays on CoreGraphics.
+final class KenoTerminalView: LocalProcessTerminalView {
+    private var triedMetal = false
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard window != nil, !triedMetal else { return }
+        triedMetal = true
+        do {
+            try setUseMetal(true)
+        } catch {
+            NSLog("Keno: Metal unavailable, using CoreGraphics: \(error)")
+        }
+    }
+
+    /// SwiftTerm's Metal surface covers this view but can't take keyboard focus,
+    /// so clicks must land on the terminal itself or focus would stay where it was.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let hit = super.hitTest(point)
+        return hit?.layer is CAMetalLayer ? self : hit
+    }
+}
+
 /// Bottom panel with tabbed terminals running your login shell.
 final class TerminalPanel: NSView, LocalProcessTerminalViewDelegate {
     private let tabBar = TabBarView()
@@ -81,7 +105,7 @@ final class TerminalPanel: NSView, LocalProcessTerminalViewDelegate {
 
     func newTerminal(in directory: URL?) {
         let options = TerminalOptions(scrollback: 5_000)
-        let term = LocalProcessTerminalView(frame: content.bounds, font: Theme.terminalFont, options: options)
+        let term = KenoTerminalView(frame: content.bounds, font: Theme.terminalFont, options: options)
         term.autoresizingMask = [.width, .height]
         term.processDelegate = self
         // Option must stay Option so non-US layouts can type @ { } [ ] | \ ~
@@ -136,6 +160,7 @@ final class TerminalPanel: NSView, LocalProcessTerminalViewDelegate {
 
     func closeSession(at index: Int) {
         guard sessions.indices.contains(index) else { return }
+        let selected = current
         let s = sessions.remove(at: index)
         s.running = false
         s.view.processDelegate = nil
@@ -145,6 +170,10 @@ final class TerminalPanel: NSView, LocalProcessTerminalViewDelegate {
             selectedIndex = -1
             refreshTabs()
             onEmpty?()
+        } else if let selected, selected !== s, let kept = sessions.firstIndex(where: { $0 === selected }) {
+            // A background tab closed: the one you're looking at stays selected and attached.
+            selectedIndex = kept
+            refreshTabs()
         } else {
             selectedIndex = -1
             select(min(index, sessions.count - 1))
