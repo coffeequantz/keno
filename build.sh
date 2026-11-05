@@ -28,4 +28,4 @@ ditto "$APP" /Applications/Keno.app
 "$LSREGISTER" -f /Applications/Keno.app
 rm -rf "$APP"                            # keep exactly one copy on the system
 echo "Installed /Applications/Keno.app"
-if pgrep -xq Keno; then echo "Keno is running: quit and reopen it to use the new version."; fi
+if pgrep -axq Keno; then echo "Keno is running: quit and reopen it to use the new version."; fi
