@@ -108,8 +108,15 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
         guard let window else { return }
         let doc = editor.current
         let folderName = folderURL?.lastPathComponent
-        window.title = doc?.displayName ?? folderName ?? "Keno"
-        window.subtitle = doc != nil ? (folderName ?? "") : ""
+        // Folder first, in the title itself (not the subtitle): App Exposé, Mission Control and the
+        // Window menu show only the title, and the project is what tells windows apart.
+        switch (folderName, doc?.displayName) {
+        case let (folder?, file?): window.title = "\(folder) — \(file)"
+        case let (folder?, nil): window.title = folder
+        case let (nil, file?): window.title = file
+        default: window.title = "Keno"
+        }
+        window.subtitle = ""
         window.representedURL = doc?.url ?? folderURL
         window.isDocumentEdited = doc?.isDirty ?? false
         if let url = doc?.url { explorer.reveal(url) }
