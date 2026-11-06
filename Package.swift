@@ -5,7 +5,8 @@ let package = Package(
     name: "Keno",
     platforms: [.macOS("13.3")],
     dependencies: [
-        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.2.0"),
+        // SwiftTerm 1.99.2 plus one commit that lets Keno choose the GPU. Drop the fork if upstream takes it.
+        .package(url: "https://github.com/coffeequantz/SwiftTerm.git", revision: "94818ae2da3aea23698057671d4ca0b8dc46c06c"),
     ],
     targets: [
         .executableTarget(

@@ -1,4 +1,5 @@
 import AppKit
+import Metal
 import SwiftTerm
 
 final class TerminalSession {
@@ -15,12 +16,17 @@ final class TerminalSession {
 /// Draws with Metal, so busy terminals render on their own thread and leave the main thread free.
 /// SwiftTerm needs a window before it can switch; if Metal can't start, the view stays on CoreGraphics.
 final class KenoTerminalView: LocalProcessTerminalView {
+    /// The integrated GPU on Macs with two. SwiftTerm's default would power up the discrete GPU
+    /// for as long as Keno runs, and a terminal doesn't need it. Nil on Macs with one GPU.
+    private static let lowPowerDevice = MTLCopyAllDevices().first(where: \.isLowPower)
+
     private var triedMetal = false
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         guard window != nil, !triedMetal else { return }
         triedMetal = true
+        preferredMetalDevice = Self.lowPowerDevice
         do {
             try setUseMetal(true)
         } catch {
