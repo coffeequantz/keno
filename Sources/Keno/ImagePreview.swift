@@ -3,7 +3,7 @@ import ImageIO
 
 /// Read-only image tab. Decodes with ImageIO at (roughly) on-screen resolution only, so a
 /// 50-megapixel photo costs a few MB instead of 200 MB, and re-decodes if the view grows.
-final class ImagePreviewView: NSView {
+final class ImagePreviewView: NSView, FileViewer {
     static let extensions: Set<String> = [
         "png", "jpg", "jpeg", "gif", "bmp", "tif", "tiff", "heic", "heif", "webp",
         "ico", "icns", "avif", "psd", "tga", "jp2",
@@ -12,6 +12,7 @@ final class ImagePreviewView: NSView {
     static func canOpen(_ url: URL) -> Bool { extensions.contains(url.pathExtension.lowercased()) }
 
     private(set) var url: URL
+    var onInfoChange: (() -> Void)?
     private var image: CGImage?
     private var decodedMaxPixels: CGFloat = 0
     private var pixelSize = CGSize.zero

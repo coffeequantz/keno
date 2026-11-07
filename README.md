@@ -26,6 +26,7 @@
 - Folder tree that loads lazily and stays in sync with the disk (FSEvents)
 - Single-click opens a preview tab; double-click keeps it open
 - Context menu: new file/folder, rename, move to Trash, reveal in Finder, copy path, open in terminal
+- Drag files out to other apps, e.g. an HTML file onto a browser in the Dock
 
 **Editor**
 - Tabs with unsaved-change indicators, middle-click to close
@@ -35,6 +36,7 @@
 - Find & replace bar
 - **Format Document** using the formatter you already have installed (swift-format, prettier, ruff/black, gofmt, rustfmt, clang-format, shfmt, jq, xmllint, …)
 - Image preview (PNG, JPEG, GIF, HEIC, WebP, AVIF, TIFF, …), decoded only at on-screen resolution
+- PDF viewer (PDFKit, built into macOS): continuous scrolling, text selection, links
 - Reloads files changed on disk when they have no unsaved edits
 
 **Terminal**
@@ -50,7 +52,7 @@
 - Speech is transcribed in pieces while you talk, so even long dictations are done a few seconds after you stop.
 
 **General**
-- Status bar: line and column, word count of the file or selection (click to switch to characters or reading time), language; image size for images
+- Status bar: line and column, word count of the file or selection (click to switch to characters or reading time), language; image size for images, current page for PDFs
 - Remembers open tabs per folder, recent folders and layout
 - Follows light/dark mode; one shared zoom level for the editor and terminal
 - Multiple windows

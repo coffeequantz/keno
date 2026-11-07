@@ -16,7 +16,7 @@ final class Document: NSObject, NSTextViewDelegate, NSTextStorageDelegate {
         didSet {
             textView.commentStyle = CommentStyle.forURL(url)
             updateLanguage()
-            if let url, url != oldValue { image?.reload(url: url) }
+            if let url, url != oldValue { viewer?.reload(url: url) }
         }
     }
     var encoding: String.Encoding = .utf8
@@ -33,25 +33,30 @@ final class Document: NSObject, NSTextViewDelegate, NSTextStorageDelegate {
     let scrollView: NSScrollView
     let ruler: LineNumberRulerView
     let lines = LineIndex()
-    /// Set for image tabs, which show a read-only preview instead of the text view.
-    let image: ImagePreviewView?
-    var isImage: Bool { image != nil }
+    /// Set for image and PDF tabs, which show a read-only viewer instead of the text view.
+    let viewer: FileViewer?
+    var isViewer: Bool { viewer != nil }
     /// The view shown in the editor area for this tab.
-    var contentView: NSView { image ?? scrollView }
+    var contentView: NSView { viewer ?? scrollView }
     /// The view that should receive keyboard focus.
-    var focusView: NSView { image ?? textView }
+    var focusView: NSView { viewer?.focusTarget ?? textView }
     private(set) var highlighter: SyntaxHighlighter?
 
     var displayName: String { url?.lastPathComponent ?? "Untitled-\(untitledNumber)" }
 
-    static func openImage(url: URL) -> Document {
-        let doc = Document(url: url, text: "", wordWrap: false, image: ImagePreviewView(url: url))
+    static func openViewer(_ viewer: FileViewer, url: URL) -> Document {
+        let doc = Document(url: url, text: "", wordWrap: false, viewer: viewer)
         doc.fileModDate = modificationDate(of: url)
+        // Page changes in a PDF update the status bar like cursor moves do.
+        viewer.onInfoChange = { [weak doc] in
+            guard let doc else { return }
+            NotificationCenter.default.post(name: Document.selectionDidChange, object: doc)
+        }
         return doc
     }
 
-    init(url: URL?, text: String, wordWrap: Bool, image: ImagePreviewView? = nil) {
-        self.image = image
+    init(url: URL?, text: String, wordWrap: Bool, viewer: FileViewer? = nil) {
+        self.viewer = viewer
         let storage = NSTextStorage()
         let layout = NSLayoutManager()
         layout.allowsNonContiguousLayout = true // big win for large files
@@ -232,7 +237,7 @@ final class Document: NSObject, NSTextViewDelegate, NSTextStorageDelegate {
     }
 
     func write(to target: URL) throws {
-        guard !isImage else { return } // previews are read-only
+        guard !isViewer else { return } // viewers are read-only
         let text = textView.string
         let data: Data
         if let d = text.data(using: encoding) {
@@ -252,9 +257,9 @@ final class Document: NSObject, NSTextViewDelegate, NSTextStorageDelegate {
     /// Reloads from disk if the file changed externally and we have no unsaved edits.
     func reloadIfChangedOnDisk() {
         guard let url, !isDirty, let mod = Self.modificationDate(of: url), mod != fileModDate else { return }
-        if let image {
+        if let viewer {
             fileModDate = mod
-            image.reload()
+            viewer.reload(url: nil)
             return
         }
         guard let (text, enc) = try? Self.read(url: url) else { return }

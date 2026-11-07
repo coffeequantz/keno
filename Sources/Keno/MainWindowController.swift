@@ -200,6 +200,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
         panel.canChooseFiles = true
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
+        panel.canCreateDirectories = true
         panel.directoryURL = folderURL
         guard panel.runModal() == .OK else { return }
         (NSApp.delegate as? AppDelegate)?.open(urls: panel.urls, preferring: self)
@@ -209,6 +210,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
+        panel.canCreateDirectories = true // "New Folder" button, to start a project right here
         panel.prompt = "Open Folder"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         (NSApp.delegate as? AppDelegate)?.open(urls: [url], preferring: self)
@@ -266,7 +268,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
         if terminalShown, terminal.containsFirstResponder {
             target = terminal
         } else {
-            if editor.current?.isImage ?? true { editor.newUntitled() }
+            if editor.current?.isViewer ?? true { editor.newUntitled() }
             guard let doc = editor.current else { return }
             editor.focus()
             target = doc
@@ -299,7 +301,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
     }
 
     @objc func formatDocument(_ sender: Any?) {
-        guard let doc = editor.current, !doc.isImage else { return }
+        guard let doc = editor.current, !doc.isViewer else { return }
         guard let url = doc.url else {
             showMessage("Save the file first so Keno knows which formatter to use.")
             return
@@ -361,7 +363,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSSplitV
         case #selector(toggleExplorer(_:)):
             item.title = explorerShown ? "Hide Explorer" : "Show Explorer"
         case #selector(saveFile(_:)), #selector(saveFileAs(_:)), #selector(formatDocument(_:)):
-            return editor.current.map { !$0.isImage } ?? false
+            return editor.current.map { !$0.isViewer } ?? false
         case #selector(toggleDictation(_:)):
             switch Dictation.shared.state {
             case .recording: item.title = "Stop Dictation"

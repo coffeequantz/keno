@@ -146,7 +146,7 @@ final class StatusBar: NSView {
 
     private func recountDocument() {
         countedDoc = document()
-        if let doc = countedDoc, !doc.isImage {
+        if let doc = countedDoc, !doc.isViewer {
             let ns = doc.textView.string as NSString
             docCount = TextStats.count(ns, in: NSRange(location: 0, length: ns.length))
         } else {
@@ -163,8 +163,8 @@ final class StatusBar: NSView {
             return
         }
         if doc !== countedDoc { recountDocument(); return }
-        if let image = doc.image {
-            positionLabel.stringValue = image.infoText
+        if let viewer = doc.viewer {
+            positionLabel.stringValue = viewer.infoText
             countButton.isHidden = true
             languageLabel.stringValue = ""
             return
@@ -185,7 +185,7 @@ final class StatusBar: NSView {
     }
 
     private func updatePosition() {
-        guard let doc = document(), !doc.isImage else { return }
+        guard let doc = document(), !doc.isViewer else { return }
         let sel = doc.textView.selectedRange()
         let line = doc.lines.line(of: sel.location)
         let col = sel.location - doc.lines.starts[min(line, doc.lines.starts.count - 1)] + 1

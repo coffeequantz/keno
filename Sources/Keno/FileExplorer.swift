@@ -122,6 +122,9 @@ final class FileExplorer: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
         outline.action = #selector(rowClicked)
         outline.doubleAction = #selector(rowDoubleClicked)
         outline.explorer = self
+        // Drag files out to other apps: a browser in the Dock, Finder, Mail, a chat window…
+        // Copy only, so a drop on Finder never moves the file out of the project.
+        outline.setDraggingSourceOperationMask([.copy, .link, .generic], forLocal: false)
         let menu = NSMenu()
         menu.delegate = self
         outline.menu = menu
@@ -230,7 +233,8 @@ final class FileExplorer: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
         let cell = (outlineView.makeView(withIdentifier: id, owner: nil) as? NSTableCellView) ?? makeCell(id)
         cell.textField?.stringValue = node.name
         cell.imageView?.image = node.isDirectory ? Self.folderIcon
-            : (ImagePreviewView.canOpen(node.url) ? Self.imageIcon : Self.fileIcon)
+            : ImagePreviewView.canOpen(node.url) ? Self.imageIcon
+            : PDFPreviewView.canOpen(node.url) ? Self.pdfIcon : Self.fileIcon
         cell.imageView?.contentTintColor = node.isDirectory ? .controlAccentColor : .secondaryLabelColor
         return cell
     }
@@ -238,6 +242,8 @@ final class FileExplorer: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
     private static let folderIcon = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: "Folder")!
         .withSymbolConfiguration(.init(pointSize: 11, weight: .regular))
     private static let imageIcon = NSImage(systemSymbolName: "photo", accessibilityDescription: "Image")!
+        .withSymbolConfiguration(.init(pointSize: 11, weight: .regular))
+    private static let pdfIcon = NSImage(systemSymbolName: "doc.richtext", accessibilityDescription: "PDF")!
         .withSymbolConfiguration(.init(pointSize: 11, weight: .regular))
     private static let fileIcon = NSImage(systemSymbolName: "doc", accessibilityDescription: "File")!
         .withSymbolConfiguration(.init(pointSize: 11, weight: .regular))
@@ -264,6 +270,12 @@ final class FileExplorer: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
             text.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
         ])
         return cell
+    }
+
+    // MARK: Dragging out
+
+    func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> NSPasteboardWriting? {
+        (item as? FileNode)?.url as NSURL?
     }
 
     // MARK: Clicks

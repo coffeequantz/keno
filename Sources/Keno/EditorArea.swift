@@ -78,7 +78,8 @@ final class EditorArea: NSView {
         }
         let doc: Document
         do {
-            doc = ImagePreviewView.canOpen(url) ? Document.openImage(url: url) : try Document.open(url: url, wordWrap: wordWrap)
+            doc = try makeFileViewer(for: url).map { Document.openViewer($0, url: url) }
+                ?? Document.open(url: url, wordWrap: wordWrap)
         } catch {
             let alert = NSAlert(error: error)
             alert.runModal()
@@ -130,9 +131,9 @@ final class EditorArea: NSView {
             view.frame = content.bounds
             view.autoresizingMask = [.width, .height]
             content.addSubview(view)
-            if !doc.isImage { doc.setWordWrap(wordWrap) } // re-sync container width with the visible size
+            if !doc.isViewer { doc.setWordWrap(wordWrap) } // re-sync container width with the visible size
         }
-        if !doc.isImage { doc.didBecomeVisible() }
+        if !doc.isViewer { doc.didBecomeVisible() }
         emptyLabel.isHidden = true
         window?.makeFirstResponder(doc.focusView)
         refreshTabs()
@@ -232,7 +233,7 @@ final class EditorArea: NSView {
 
     @discardableResult
     func save(_ doc: Document) -> Bool {
-        if doc.isImage { return true }
+        if doc.isViewer { return true }
         guard let url = doc.url else { return saveAs(doc) }
         do {
             try doc.write(to: url)
@@ -245,7 +246,7 @@ final class EditorArea: NSView {
 
     @discardableResult
     func saveAs(_ doc: Document) -> Bool {
-        if doc.isImage { return true }
+        if doc.isViewer { return true }
         let panel = NSSavePanel()
         panel.nameFieldStringValue = doc.url?.lastPathComponent ?? "Untitled.txt"
         if let dir = doc.url?.deletingLastPathComponent() ?? defaultSaveDirectory { panel.directoryURL = dir }
